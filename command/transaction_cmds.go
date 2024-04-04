@@ -111,3 +111,36 @@ func GetTxsOfAddress(store *store.Storage, chainParams *chaincfg.Params) Command
 		chainParams: chainParams,
 	}
 }
+
+
+// get_tx_status
+
+type getTxStatus struct {
+	store *store.Storage
+}
+
+func (g *getTxStatus) Name() string {
+	return "get_tx_status"
+}
+
+func (g *getTxStatus) Execute(params json.RawMessage) (interface{}, error) {
+	var p string
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return nil, err
+	}
+	tx, exists, err := g.store.GetTxStatus(p)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, store.ErrGetTxNotFound
+	}
+	return tx, nil
+}
+
+func GetTxStatus(store *store.Storage) Command {
+	return &getTxStatus{
+		store: store,
+	}
+}

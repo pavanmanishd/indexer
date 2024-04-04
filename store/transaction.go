@@ -178,3 +178,30 @@ func (s *Storage) GetTxsOfPubScript(scriptPubKey string) ([]*model.Transaction, 
 func getPkKey(hash string, i uint32) string {
 	return "pk" + hash + string(i)
 }
+
+func (s *Storage) GetTxStatus(hash string) (map[string]string, bool, error) {
+	data, err := s.db.Get(hash)
+	if err != nil {
+		if err.Error() == ErrKeyNotFound {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	tx, err := model.UnmarshalTransaction(data)
+	if err != nil {
+		return nil, false, err
+	}
+	var msg map[string]string
+	if tx.BlockHash == "" {
+		msg = map[string]string{
+			"txid":   tx.Hash,
+			"status": "unconfirmed",
+		}
+	} else {
+		msg = map[string]string{
+			"txid":   tx.Hash,
+			"status": "confirmed",
+		}
+	}
+	return msg, true, nil
+}
