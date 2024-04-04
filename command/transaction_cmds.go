@@ -176,3 +176,36 @@ func GetRawTx(store *store.Storage) Command {
 		store: store,
 	}
 }
+
+
+// get_raw_tx_hex
+
+type getRawTxHex struct {
+	store *store.Storage
+}
+
+func (g *getRawTxHex) Name() string {
+	return "get_raw_tx_hex"
+}
+
+func (g *getRawTxHex) Execute(params json.RawMessage) (interface{}, error) {
+	var p string
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return nil, err
+	}
+	tx, exists, err := g.store.GetRawTxHex(p)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, store.ErrGetTxNotFound
+	}
+	return tx, nil
+}
+
+func GetRawTxHex(store *store.Storage) Command {
+	return &getRawTxHex{
+		store: store,
+	}
+}

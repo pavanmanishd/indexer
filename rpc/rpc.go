@@ -94,6 +94,7 @@ func Default(store *store.Storage, chainParams *chaincfg.Params) RPC {
 	rpc.RegisterCommand(command.NewBroadcastCommand(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS")))
 	rpc.RegisterCommand(command.GetTxStatus(store))
 	rpc.RegisterCommand(command.GetRawTx(store))
+	rpc.RegisterCommand(command.GetRawTxHex(store))
 	return rpc
 }
 

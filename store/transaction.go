@@ -216,3 +216,14 @@ func (s *Storage) GetRawTx(hash string) ([]byte, bool, error) {
 	}
 	return data, true, nil
 }
+
+func (s *Storage) GetRawTxHex(hash string) (string, bool, error) {
+	data, exists, err := s.GetRawTx(hash)
+	if err != nil {
+		return "", false, err
+	}
+	if !exists {
+		return "", false, nil
+	}
+	return fmt.Sprintf("%x", data), true, nil
+}
