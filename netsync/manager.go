@@ -147,7 +147,7 @@ func (s *SyncManager) fetchBlocks() {
 			s.logger.Error("error pushing getblocks message", zap.Error(err))
 			continue
 		}
-		isProcessed := s.waitForBlocksToBeProcessed(locator,latestBlockHeight)
+		isProcessed := s.waitForBlocksToBeProcessed(locator)
         if (!isProcessed) {
 		    return
 		}
@@ -163,16 +163,16 @@ func (s *SyncManager) fetchBlocks() {
 // then peers send the mined block(we don't request for it, it's just sent to us)
 // In that case, below function will wait for next 501 blocks to be processed
 // and then callee function should handle the case where the blockchain is completely synced
-func (s *SyncManager) waitForBlocksToBeProcessed(locator []*chainhash.Hash, latestBlockHeight uint64) bool {
+func (s *SyncManager) waitForBlocksToBeProcessed(locator []*chainhash.Hash) bool {
     // Set a default limit
     limit := 501
     
     // Calculate the difference between the last block and the latest block height
-    diff := int(s.peer.LastBlock() - int32(latestBlockHeight))
+    diff := int(s.peer.LastBlock() - int32(s.latestHeight))
     
     // Check if the latest block height is non-zero and the difference is zero,
     // which means all blocks have been processed
-    if latestBlockHeight != 0 && diff == 0 {
+    if s.latestHeight != 0 && diff == 0 {
         return false
     }
     
@@ -189,11 +189,11 @@ func (s *SyncManager) waitForBlocksToBeProcessed(locator []*chainhash.Hash, late
     // Iterate up to the limit
     for i := 0; i < limit; i++ {
         // Recalculate the difference inside the loop to reflect any changes
-        diff = int(s.peer.LastBlock() - int32(latestBlockHeight))
+        diff = int(s.peer.LastBlock() - int32(s.latestHeight))
         
         // Check if the latest block height is non-zero and the difference is zero,
         // which means all blocks have been processed
-        if latestBlockHeight != 0 && diff == 0 {
+        if s.latestHeight != 0 && diff == 0 {
             return false
         }
         
@@ -368,7 +368,6 @@ func (s *SyncManager) putBlock(block *wire.MsgBlock) error {
 	}
 	s.logger.Info("successfully block indexed", zap.Uint64("height", height))
 	s.latestHeight = height
-	s.peer.UpdateLastBlockHeight(int32(height))
 	return nil
 }
 
