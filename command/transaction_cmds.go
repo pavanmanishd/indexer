@@ -144,3 +144,35 @@ func GetTxStatus(store *store.Storage) Command {
 		store: store,
 	}
 }
+
+// get_raw_tx
+
+type getRawTx struct {
+	store *store.Storage
+}
+
+func (g *getRawTx) Name() string {
+	return "get_raw_tx"
+}
+
+func (g *getRawTx) Execute(params json.RawMessage) (interface{}, error) {
+	var p string
+	err := json.Unmarshal(params, &p)
+	if err != nil {
+		return nil, err
+	}
+	tx, exists, err := g.store.GetRawTx(p)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, store.ErrGetTxNotFound
+	}
+	return tx, nil
+}
+
+func GetRawTx(store *store.Storage) Command {
+	return &getRawTx{
+		store: store,
+	}
+}

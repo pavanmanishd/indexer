@@ -205,3 +205,14 @@ func (s *Storage) GetTxStatus(hash string) (map[string]string, bool, error) {
 	}
 	return msg, true, nil
 }
+
+func (s *Storage) GetRawTx(hash string) ([]byte, bool, error) {
+	data, err := s.db.Get(hash)
+	if err != nil {
+		if err.Error() == ErrKeyNotFound {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return data, true, nil
+}
