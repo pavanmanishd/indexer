@@ -368,6 +368,7 @@ func (s *SyncManager) putBlock(block *wire.MsgBlock) error {
 	}
 	s.logger.Info("successfully block indexed", zap.Uint64("height", height))
 	s.latestHeight = height
+	s.peer.UpdateLastBlockHeight(int32(height))
 	return nil
 }
 
