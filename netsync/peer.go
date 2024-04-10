@@ -36,8 +36,6 @@ func NewPeer(url string, chainParams *chaincfg.Params, logger *zap.Logger) (*Pee
 				for _, inv := range msg.InvList {
 					if inv.Type == wire.InvTypeTx {
 						logger.Info("received tx inv", zap.String("hash", inv.Hash.String()))
-					} else if inv.Type == wire.InvTypeBlock {
-						logger.Info("received block inv", zap.String("hash", inv.Hash.String()))
 					}
 					sendMsg.AddInvVect(inv)
 				}

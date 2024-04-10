@@ -70,10 +70,6 @@ func (s *SyncManager) Sync() error {
 			case *wire.MsgBlock:
 				block := m
 
-				if s.isSynced {
-					<-s.peer.blockProcessed
-				}
-
 				if err := s.putBlock(block); err != nil {
 					//TODO: handle orphan blocks
 					s.logger.Error("sync: ", zap.String("hash", block.BlockHash().String()), zap.Error(err))
@@ -153,8 +149,6 @@ func (s *SyncManager) fetchBlocks() {
 		}
 		isProcessed := s.waitForBlocksToBeProcessed(locator,latestBlockHeight)
         if (!isProcessed) {
-			s.logger.Info("blockchain synced ✅")
-			s.isSynced = true
 		    return
 		}
 	}
@@ -184,7 +178,7 @@ func (s *SyncManager) waitForBlocksToBeProcessed(locator []*chainhash.Hash, late
     
     // Adjust limit if the difference is within a reasonable range
     if diff > 0 && diff < 500 {
-        limit = diff
+        limit = diff + 1
     }
     
     // If the locator is empty, set limit to 500
@@ -196,15 +190,15 @@ func (s *SyncManager) waitForBlocksToBeProcessed(locator []*chainhash.Hash, late
     for i := 0; i < limit; i++ {
         // Recalculate the difference inside the loop to reflect any changes
         diff = int(s.peer.LastBlock() - int32(latestBlockHeight))
-		
-		// Wait for a block to be processed
-		<-s.peer.blockProcessed
         
         // Check if the latest block height is non-zero and the difference is zero,
         // which means all blocks have been processed
         if latestBlockHeight != 0 && diff == 0 {
             return false
         }
+        
+        // Wait for a block to be processed
+        <-s.peer.blockProcessed
     }
     
     // All blocks up to the limit have been processed
