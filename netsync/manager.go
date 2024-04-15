@@ -70,9 +70,9 @@ func (s *SyncManager) Sync() error {
 			case *wire.MsgBlock:
 				block := m
 
-				if s.isSynced {
-					<-s.peer.blockProcessed
-				}
+				// if s.isSynced {
+				// 	<-s.peer.blockProcessed
+				// }
 
 				if err := s.putBlock(block); err != nil {
 					//TODO: handle orphan blocks
@@ -140,6 +140,7 @@ func (s *SyncManager) fetchBlocks() {
 		if latestBlockHeight == uint64(s.peer.LastBlock()) && latestBlockHeight != 0 {
 			s.logger.Info("blockchain synced ✅")
 			s.isSynced = true
+			s.peer.isSynced = true
 			return
 		}
 		locator, err := s.getBlockLocator(latestBlockHeight)
@@ -155,6 +156,7 @@ func (s *SyncManager) fetchBlocks() {
         if (!isProcessed) {
 			s.logger.Info("blockchain synced ✅")
 			s.isSynced = true
+			s.peer.isSynced = true
 		    return
 		}
 	}

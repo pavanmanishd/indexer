@@ -19,6 +19,7 @@ type Peer struct {
 	blockProcessed chan struct{}
 	msg            chan interface{}
 	logger         *zap.Logger
+	isSynced		bool
 }
 
 func NewPeer(url string, chainParams *chaincfg.Params, logger *zap.Logger) (*Peer, error) {
@@ -69,6 +70,7 @@ func NewPeer(url string, chainParams *chaincfg.Params, logger *zap.Logger) (*Pee
 		msg:            peerMsg,
 		chainParams:    chainParams,
 		logger:         logger,
+		isSynced:	false,
 	}, nil
 }
 
@@ -86,7 +88,7 @@ func (p *Peer) OnMsg(ctx context.Context, handler func(msg interface{}) error) c
 				if !ok {
 					return
 				}
-				if _, ok := msg.(*wire.MsgBlock); ok {
+				if _, ok := msg.(*wire.MsgBlock); ok && !p.isSynced {
 					p.blockProcessed <- struct{}{}
 				}
 				err := handler(msg)
