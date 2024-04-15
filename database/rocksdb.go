@@ -181,6 +181,8 @@ func (r *RocksDB) GetWithPrefix(prefix string) ([][]byte, error) {
 	vals := make([][]byte, 0)
 	for iter.Seek([]byte(prefix)); iter.Valid(); iter.Next() {
 		key := iter.Key()
+		// Ensure that the length of the key is greater than the length of the prefix,
+		// as attempting to slice a string with a length greater than the string itself will raise an error.
 		if len(prefix)>len(string(key.Data())) || string(key.Data())[:len(prefix)] != prefix {
 			break
 		}
