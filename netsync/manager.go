@@ -566,3 +566,17 @@ func calculateLocator(topHeight uint64) []uint64 {
 	indexes = append(indexes, 0)
 	return indexes
 }
+
+func (s *SyncManager) RemoveBlock(height uint64) error {
+	block, exists, err := s.store.GetBlockByHeight(height)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("block not found")
+	}
+	if err := s.store.RemoveBlocksAbove(block.Hash); err != nil {
+		return err
+	}
+	return nil
+}

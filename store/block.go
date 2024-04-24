@@ -201,3 +201,50 @@ func (s *Storage) PutBlock(block *model.Block) error {
 	}
 	return s.db.Put(block.Hash, blockInBytes)
 }
+
+func (s *Storage) RemoveBlock(hash string) error {
+	block, exists, err := s.GetBlock(hash)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	err = s.db.Delete(hash)
+	if err != nil {
+		return err
+	}
+	return s.db.Delete(fmt.Sprint(block.Height))
+}
+
+func (s *Storage) RemoveBlocksAbove(hash string) error {
+	height, exists, err := s.GetBlockHeight(hash)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	for i := height; i > 0; i-- {
+		err = s.db.Delete(fmt.Sprint(i))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Storage) GetBlockHeight(hash string) (uint64, bool, error) {
+	data, err := s.db.Get(hash)
+	if err != nil {
+		if err.Error() == ErrKeyNotFound {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	block, err := model.UnmarshalBlock(data)
+	if err != nil {
+		return 0, false, fmt.Errorf("GetBlockHeight: error unmarshalling block: %w", err)
+	}
+	return block.Height, true, nil
+}
