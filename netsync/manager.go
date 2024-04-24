@@ -199,14 +199,16 @@ func (s *SyncManager) waitForBlocksToBeProcessed(locator []*chainhash.Hash) bool
         // Recalculate the difference inside the loop to reflect any changes
         diff = int(s.peer.LastBlock() - int32(s.latestHeight))
 		
-		// Wait for a block to be processed
-		<-s.peer.blockProcessed
-        
         // Check if the latest block height is non-zero and the difference is zero,
         // which means all blocks have been processed
         if s.latestHeight != 0 && diff == 0 {
-            return false
+            <-s.peer.blockProcessed
+			return false
         }
+		
+		// Wait for a block to be processed
+		<-s.peer.blockProcessed
+        
     }
     
     // All blocks up to the limit have been processed
