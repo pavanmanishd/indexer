@@ -284,6 +284,20 @@ func (s *SyncManager) putBlock(block *wire.MsgBlock) error {
 			if s.latestHeight <= orphanBlock.Height+1 {
 				// the block we got might not be orphan anymore
 				// reorganize the blocks
+				fmt.Println(s.latestHeight , orphanBlock.Height)
+				for s.latestHeight <= orphanBlock.Height {
+					// get the previous block of the orphan block
+					previousBlock, exists, err := s.store.GetBlock(orphanBlock.PreviousBlock)
+					if err != nil {
+						return err
+					}
+					if !exists {
+						// we don't have the previous block in the main chain or orphan chain
+						// do not process the block
+						return nil
+					}
+					orphanBlock = previousBlock
+				}
 				err := s.reorganizeBlocks(orphanBlock)
 				if err != nil {
 					return err
@@ -452,6 +466,8 @@ func (s *SyncManager) reorganizeBlocks(orphanBlock *model.Block) error {
 			return err
 		}
 	}
+	s.latestHeight = orphanBlock.Height
+	s.peer.UpdateLastBlockHeight(int32(orphanBlock.Height))
 
 	return nil
 
