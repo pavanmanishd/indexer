@@ -3,7 +3,9 @@ package store
 import (
 	"fmt"
 	"strconv"
-
+	// "strings"
+	"sort"
+	"sync"
 	"github.com/catalogfi/indexer/model"
 )
 
@@ -247,4 +249,77 @@ func (s *Storage) GetBlockHeight(hash string) (uint64, bool, error) {
 		return 0, false, fmt.Errorf("GetBlockHeight: error unmarshalling block: %w", err)
 	}
 	return block.Height, true, nil
+}
+
+func (s *Storage) GetBlockRangeUniqueNBits(start uint64,end uint64) (int, error) {
+	uniqueElements := make(map[uint64]struct{})
+	var result []uint64
+	for i:=start;i<=end;i++ {
+		block,exists,err := s.GetBlockByHeight(i)
+        if err!=nil {
+			return 0,err
+		}
+		if !exists {
+			break
+		}
+		uniqueElements[uint64(block.Bits)] = struct{}{}
+    }
+
+    for num := range uniqueElements {
+        result = append(result, num)
+    }
+	fmt.Println(result)
+    return len(result), nil
+}
+
+type BatchResult struct {
+    BatchNum int
+    Result   int
+}
+
+func (s *Storage) GetBlockRangeNBitsGrouped(start uint64, end uint64, group uint64) ([]int, error) {
+    diff := end - start + 1
+    var curr uint64 = start
+    var results []BatchResult
+    var wg sync.WaitGroup
+    var mu sync.Mutex
+
+    for diff > 0 {
+        if diff < group {
+            group = diff
+        }
+
+        wg.Add(1)
+        go func(curr, group uint64) {
+            defer wg.Done()
+
+            unique, err := s.GetBlockRangeUniqueNBits(curr, curr+group-1)
+            if err != nil {
+                // Handle error
+                return
+            }
+
+            mu.Lock()
+            defer mu.Unlock()
+            results = append(results, BatchResult{BatchNum: int(curr), Result: unique})
+        }(curr, group)
+
+        diff -= group
+        curr += group
+    }
+
+    wg.Wait()
+
+    // Sort the results by batch number
+    sort.Slice(results, func(i, j int) bool {
+        return results[i].BatchNum < results[j].BatchNum
+    })
+
+    // Extract the results in order
+    var finalResult []int
+    for _, res := range results {
+        finalResult = append(finalResult, res.Result)
+    }
+
+    return finalResult, nil
 }
