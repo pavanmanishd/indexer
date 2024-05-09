@@ -52,5 +52,5 @@ func main() {
 	go syncManager.Sync()
 
 	rpcServer := rpc.Default(store, dogeCoinNetwork).SetLogger(logger)
-	rpcServer.Run(":8080")
+	rpcServer.Run(":8090")
 }
