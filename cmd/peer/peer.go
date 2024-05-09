@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "fmt"
 	"os"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -8,8 +9,11 @@ import (
 	"github.com/catalogfi/indexer/netsync"
 	"github.com/catalogfi/indexer/rpc"
 	"github.com/catalogfi/indexer/store"
+	"github.com/catalogfi/indexer/dogecoin"
 	"go.uber.org/zap"
 )
+
+
 
 func main() {
 
@@ -27,20 +31,18 @@ func main() {
 	}
 	defer db.Close()
 
-	var params *chaincfg.Params
-	switch os.Getenv("NETWORK") {
-	case "mainnet":
-		params = &chaincfg.MainNetParams
-	case "testnet":
-		params = &chaincfg.TestNet3Params
-	default:
-		panic("invalid network")
+	var dogeCoinNetwork *chaincfg.Params
+	if os.Getenv("NETWORK") == "mainnet" {
+		dogeCoinNetwork = &dogecoin.MainNetParams
+	} else {
+		dogeCoinNetwork = &dogecoin.TestNet3Params
 	}
 
 	store := store.NewStorage(db).SetLogger(logger)
+	// fmt.Println(store.GetBlockRangeNBitsGrouped(1,100000,2016))
 	syncManager, err := netsync.NewSyncManager(netsync.SyncConfig{
 		PeerAddr:    os.Getenv("PEER_URL"),
-		ChainParams: params,
+		ChainParams: dogeCoinNetwork,
 		Store:       store,
 		Logger:      logger,
 	})
@@ -49,6 +51,6 @@ func main() {
 	}
 	go syncManager.Sync()
 
-	rpcServer := rpc.Default(store, params).SetLogger(logger)
+	rpcServer := rpc.Default(store, dogeCoinNetwork).SetLogger(logger)
 	rpcServer.Run(":8080")
 }
