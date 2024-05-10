@@ -377,14 +377,15 @@ func (s *SyncManager) putBlock(block *wire.MsgBlock) error {
 		hashes = append(hashes, in.PreviousOutPoint.Hash.String())
 		indices = append(indices, in.PreviousOutPoint.Index)
 	}
-	s.logger.Info("removing utxos step 2", zap.Int("len", len(hashes)))
+	s.logger.Info("removing utxos step 2", zap.Int("len hashes", len(hashes)),zap.Int("len indices", len(indices)),zap.Int("len vins",len(vins)))
 	//Ignores the coinbase transaction
-	err = s.store.RemoveUTXOs(hashes, indices, vins[1:])
-	if err != nil {
-		s.logger.Error("error removing utxos", zap.Error(err))
-		return err
-	}
-
+	if len(vins) > 0 {
+    err = s.store.RemoveUTXOs(hashes, indices, vins[1:])
+	  if err != nil {
+		  s.logger.Error("error removing utxos", zap.Error(err))
+		  return err
+	  }
+  }
 	s.logger.Info("removing utxos done", zap.Duration("time", time.Since(timeNow)))
 
 	if err := s.store.SetLatestBlockHeight(height); err != nil {
