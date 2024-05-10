@@ -57,3 +57,35 @@ func LatestTipHash(store *store.Storage) Command {
 		store: store,
 	}
 }
+
+
+// get_block_by_height
+
+type getBlockByHeight struct {
+	store *store.Storage
+}
+
+func (g *getBlockByHeight) Name() string {
+	return "get_block_by_height"
+}
+
+func (g *getBlockByHeight) Execute(params json.RawMessage) (interface{}, error) {
+	var height int64
+	if err := json.Unmarshal(params, &height); err != nil {
+		return nil, err
+	}
+	block, exists, err := g.store.GetBlockByHeight(uint64(height))
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, store.ErrGetBlockNotFound
+	}
+	return block, nil
+}
+
+func GetBlockByHeight(store *store.Storage) Command {
+	return &getBlockByHeight{
+		store: store,
+	}
+}
