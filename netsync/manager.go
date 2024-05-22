@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
-
+	"os"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -24,6 +24,7 @@ type SyncManager struct {
 	chainParams  *chaincfg.Params
 	latestHeight uint64
 	isSynced     bool
+	isMempoolSynced bool
 	logger       *zap.Logger
 }
 
@@ -64,6 +65,12 @@ func (s *SyncManager) Sync() error {
 
 	for {
 		ctx, cancel := context.WithCancel(context.Background())
+
+		if s.isSynced && !s.isMempoolSynced {
+			go s.mempool.SyncMempool(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS"))
+			s.isMempoolSynced = true
+		}		
+
 		closed := s.peer.OnMsg(ctx, func(msg interface{}) error {
 
 			switch m := msg.(type) {
@@ -377,14 +384,15 @@ func (s *SyncManager) putBlock(block *wire.MsgBlock) error {
 		hashes = append(hashes, in.PreviousOutPoint.Hash.String())
 		indices = append(indices, in.PreviousOutPoint.Index)
 	}
-	s.logger.Info("removing utxos step 2", zap.Int("len", len(hashes)))
+	s.logger.Info("removing utxos step 2", zap.Int("len hashes", len(hashes)),zap.Int("len indices", len(indices)),zap.Int("len vins",len(vins)))
 	//Ignores the coinbase transaction
-	err = s.store.RemoveUTXOs(hashes, indices, vins[1:])
-	if err != nil {
-		s.logger.Error("error removing utxos", zap.Error(err))
-		return err
-	}
-
+	if len(vins) > 0 {
+    err = s.store.RemoveUTXOs(hashes, indices, vins[1:])
+	  if err != nil {
+		  s.logger.Error("error removing utxos", zap.Error(err))
+		  return err
+	  }
+  }
 	s.logger.Info("removing utxos done", zap.Duration("time", time.Since(timeNow)))
 
 	if err := s.store.SetLatestBlockHeight(height); err != nil {

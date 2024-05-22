@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
 )
 
@@ -59,6 +60,36 @@ func (t *Transaction) ToWireTx() (*wire.MsgTx, error) {
 		})
 	}
 	return wireTx, nil
+}
+
+func UnmarshalTxRawResult(data *btcjson.TxRawResult) (*Transaction, error) {
+	tx := &Transaction{
+		Hash:     data.Txid,
+		LockTime: data.LockTime,
+		Version:  int32(data.Version),
+	}
+	for _, vin := range data.Vin {
+		if len(vin.Witness) == 0 {
+			vin.Witness = []string{""}
+		}
+		tx.Vins = append(tx.Vins, Vin{
+			TxId:            vin.Txid,
+			Index:           vin.Vout,
+			Sequence:        vin.Sequence,
+			SignatureScript: vin.ScriptSig.Hex,
+			Witness:         vin.Witness[0],
+		})
+	}
+	for _, vout := range data.Vout {
+		tx.Vouts = append(tx.Vouts, Vout{
+			TxId:         data.Txid,
+			Index:        uint32(vout.N),
+			ScriptPubKey: vout.ScriptPubKey.Hex,
+			Value:        int64(vout.Value),
+			Type:         vout.ScriptPubKey.Type,
+		})
+	}
+	return tx, nil
 }
 
 type Vin struct {
