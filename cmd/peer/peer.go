@@ -59,5 +59,5 @@ func main() {
 	go syncManager.Sync()
 
 	rpcServer := rpc.Default(store, params).SetLogger(logger)
-	rpcServer.Run(":"+os.Getenv("RPC_PORT"))
+	rpcServer.Run(":"+os.Getenv("PORT"))
 }
