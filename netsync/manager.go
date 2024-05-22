@@ -66,19 +66,18 @@ func (s *SyncManager) Sync() error {
 	for {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		if s.isSynced && !s.isMempoolSynced {
-			go func() {
-				s.logger.Info("syncing all mempool transactions...")
-				err := s.mempool.SyncMempool(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS"))
-				if err != nil {
-					s.logger.Error("mempool sync error", zap.Error(err))
-					s.isMempoolSynced = false
-				}
-			}()
-			s.isMempoolSynced = true
-		}
-
 		closed := s.peer.OnMsg(ctx, func(msg interface{}) error {
+			if s.isSynced && !s.isMempoolSynced {
+				go func() {
+					s.logger.Info("syncing all mempool transactions...")
+					err := s.mempool.SyncMempool(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS"))
+					if err != nil {
+						s.logger.Error("mempool sync error", zap.Error(err))
+						s.isMempoolSynced = false
+					}
+				}()
+				s.isMempoolSynced = true
+			}
 			switch m := msg.(type) {
 			case *wire.MsgBlock:
 				block := m
@@ -133,39 +132,67 @@ func (s *SyncManager) putMempoolTx(tx *wire.MsgTx) error {
 
 func (s *SyncManager) fetchBlocks() {
 	for {
+		// Check if the peer is connected
 		if !s.peer.Connected() {
+			s.logger.Info("peer disconnected")
 			break
 		}
+
+		// Get the latest block height from the store
 		latestBlockHeight, _, err := s.store.GetLatestBlockHeight()
 		if err != nil {
 			s.logger.Error("error getting latest block height", zap.Error(err))
 			continue
 		}
-		if latestBlockHeight == uint64(s.peer.LastBlock()) && latestBlockHeight != 0 {
-			s.logger.Info("blockchain synced ✅")
-			s.isSynced = true
-			s.peer.isSynced = true
-			return
-		}
-		locator, err := s.getBlockLocator(latestBlockHeight)
-		if err != nil {
-			s.logger.Error("error getting latest locator", zap.Error(err))
+
+		peerLastBlock := s.peer.LastBlock()
+		s.logger.Info("latest block height", zap.Uint64("latestBlockHeight", latestBlockHeight), zap.Int32("peerLastBlock", peerLastBlock))
+
+		// Check if the peer's last block is valid
+		if peerLastBlock == 0 {
+			s.logger.Warn("peer's last block is 0, waiting for peer to synchronize")
 			continue
 		}
+
+		// Check if the blockchain is already synced
+		if latestBlockHeight == uint64(peerLastBlock) && latestBlockHeight != 0 {
+			s.logger.Info("blockchain synced ✅")
+			s.setSyncedStatus(true)
+			return
+		}
+
+		// Get block locator
+		locator, err := s.getBlockLocator(latestBlockHeight)
+		if err != nil {
+			s.logger.Error("error getting block locator", zap.Error(err))
+			continue
+		}
+
+		// Push getblocks message to peer
 		if err := s.peer.PushGetBlocksMsg(locator, &chainhash.Hash{}); err != nil {
 			s.logger.Error("error pushing getblocks message", zap.Error(err))
 			continue
 		}
-		isProcessed := s.waitForBlocksToBeProcessed(locator)
-        if (!isProcessed) {
+
+		// Wait for blocks to be processed
+		if s.waitForBlocksToBeProcessed(locator) {
+			s.logger.Info("blocks processed")
+		} else {
 			s.logger.Info("blockchain synced ✅")
-			s.isSynced = true
-			s.peer.isSynced = true
-		    return
+			s.setSyncedStatus(true)
+			return
 		}
 	}
-
 }
+
+// setSyncedStatus sets the synced status for both the SyncManager and its peer
+func (s *SyncManager) setSyncedStatus(status bool) {
+	s.isSynced = status
+	if s.peer != nil {
+		s.peer.isSynced = status
+	}
+}
+
 
 // while syncing, we need to make sure all requested blocks ..
 // are processed first and then only we request for more blocks
