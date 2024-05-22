@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
-
+	"os"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -24,6 +24,7 @@ type SyncManager struct {
 	chainParams  *chaincfg.Params
 	latestHeight uint64
 	isSynced     bool
+	isMempoolSynced bool
 	logger       *zap.Logger
 }
 
@@ -64,6 +65,12 @@ func (s *SyncManager) Sync() error {
 
 	for {
 		ctx, cancel := context.WithCancel(context.Background())
+
+		if s.isSynced && !s.isMempoolSynced {
+			go s.mempool.SyncMempool(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS"))
+			s.isMempoolSynced = true
+		}		
+
 		closed := s.peer.OnMsg(ctx, func(msg interface{}) error {
 
 			switch m := msg.(type) {

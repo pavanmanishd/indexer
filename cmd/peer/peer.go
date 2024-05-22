@@ -31,18 +31,25 @@ func main() {
 	}
 	defer db.Close()
 
-	var dogeCoinNetwork *chaincfg.Params
-	if os.Getenv("NETWORK") == "mainnet" {
-		dogeCoinNetwork = &dogecoin.MainNetParams
+	var params *chaincfg.Params
+	if os.Getenv("CHAIN") == "dogecoin" {
+		if os.Getenv("NETWORK") == "mainnet" {
+			params = &dogecoin.MainNetParams
+		} else {
+			params = &dogecoin.TestNet3Params
+		}
 	} else {
-		dogeCoinNetwork = &dogecoin.TestNet3Params
+		if os.Getenv("NETWORK") == "mainnet" {
+			params = &chaincfg.MainNetParams
+		} else {
+			params = &chaincfg.TestNet3Params
+		}
 	}
-
 	store := store.NewStorage(db).SetLogger(logger)
 	// fmt.Println(store.GetBlockRangeNBitsGrouped(1,100000,2016))
 	syncManager, err := netsync.NewSyncManager(netsync.SyncConfig{
 		PeerAddr:    os.Getenv("PEER_URL"),
-		ChainParams: dogeCoinNetwork,
+		ChainParams: params,
 		Store:       store,
 		Logger:      logger,
 	})
@@ -51,6 +58,6 @@ func main() {
 	}
 	go syncManager.Sync()
 
-	rpcServer := rpc.Default(store, dogeCoinNetwork).SetLogger(logger)
-	rpcServer.Run(":8090")
+	rpcServer := rpc.Default(store, params).SetLogger(logger)
+	rpcServer.Run(":"+os.Getenv("RPC_PORT"))
 }

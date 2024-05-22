@@ -2,8 +2,11 @@ package mempool
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strings"
 
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/catalogfi/indexer/model"
@@ -260,4 +263,78 @@ descendantsLoop:
 		}
 	}
 	return wireDescendants, nil
+}
+
+func (m *Mempool) GetAllMemPoolTxHashes(rpcURL, rpcUser, rpcPass string) ([]*chainhash.Hash, error) {
+	connCfg := &rpcclient.ConnConfig{
+		Host:         rpcURL,
+		User:         rpcUser,
+		Pass:         rpcPass,
+		HTTPPostMode: true,
+		DisableTLS:   true,
+	}
+
+	client, err := rpcclient.New(connCfg, nil)
+	if err != nil {
+		fmt.Println("Error creating rpc client")
+		return nil, err
+	}
+	defer client.Shutdown()
+	
+	
+	// result := client.GetRawMempoolAsync()
+	// txHashes, err := result.Receive()
+	txHashes, err := client.GetRawMempool()
+	if err != nil {
+		fmt.Println("Error getting mempool txs")
+		return nil, err
+	}
+	return txHashes, nil
+}
+
+func (m *Mempool) SyncMempool(rpcURL, rpcUser, rpcPass string) error {
+	txHashes, err := m.GetAllMemPoolTxHashes(rpcURL, rpcUser, rpcPass)
+	if err != nil {
+		return err
+	}
+
+	connCfg := &rpcclient.ConnConfig{
+		Host:         rpcURL,
+		User:         rpcUser,
+		Pass:         rpcPass,
+		HTTPPostMode: true,
+		DisableTLS:   true,
+	}
+
+	client, err := rpcclient.New(connCfg, nil)
+	if err != nil {
+		return err
+	}
+
+	defer client.Shutdown()
+
+	for _, hash := range txHashes {
+		fmt.Println("Getting tx", hash.String())
+		tx, err := client.GetRawTransactionVerbose(hash)
+		if err != nil {
+			return err
+		}
+
+		unmarshalTxn, err := model.UnmarshalTxRawResult(tx)
+		if err != nil {
+			return err
+		}
+
+		wireTx, err := unmarshalTxn.ToWireTx()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Processing tx", wireTx.TxHash().String())
+		err = m.ProcessTx(wireTx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
