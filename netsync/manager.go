@@ -67,22 +67,22 @@ func (s *SyncManager) Sync() error {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		if s.isSynced && !s.isMempoolSynced {
-			go s.mempool.SyncMempool(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS"))
+			go func() {
+				s.logger.Info("syncing all mempool transactions...")
+				err := s.mempool.SyncMempool(os.Getenv("RPC_URL"), os.Getenv("RPC_USER"), os.Getenv("RPC_PASS"))
+				if err != nil {
+					s.logger.Error("mempool sync error", zap.Error(err))
+					s.isMempoolSynced = false
+				}
+			}()
 			s.isMempoolSynced = true
-		}		
+		}
 
 		closed := s.peer.OnMsg(ctx, func(msg interface{}) error {
-
 			switch m := msg.(type) {
 			case *wire.MsgBlock:
 				block := m
-
-				// if s.isSynced {
-				// 	<-s.peer.blockProcessed
-				// }
-
 				if err := s.putBlock(block); err != nil {
-					//TODO: handle orphan blocks
 					s.logger.Error("sync: ", zap.String("hash", block.BlockHash().String()), zap.Error(err))
 					return err
 				}
@@ -96,24 +96,21 @@ func (s *SyncManager) Sync() error {
 				}
 			}
 			return nil
-
 		})
+
 		go s.fetchBlocks()
 		s.peer.WaitForDisconnect()
 		cancel()
 
-		// make sure to wait until the OnBlock goroutine is done
 		<-closed
 		s.logger.Warn("peer got disconnected... reconnecting")
 		reconnectedPeer, err := s.peer.Reconnect()
 		if err != nil {
-			//TODO: handle reconnection error
 			s.logger.Error("error reconnecting peer", zap.Error(err))
 			panic(err)
 		}
 		s.peer = reconnectedPeer
 	}
-
 }
 
 func (s *SyncManager) putMempoolTx(tx *wire.MsgTx) error {
