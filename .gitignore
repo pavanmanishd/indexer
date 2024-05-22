@@ -1,2 +1,6 @@
 bitcoin.conf
 gorm.db
+.env*
+data
+test
+doge

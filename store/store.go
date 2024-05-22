@@ -1,28 +1,27 @@
 package store
 
 import (
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/catalogfi/indexer/command"
-	"github.com/catalogfi/indexer/peer"
-	"gorm.io/gorm"
+	"github.com/catalogfi/indexer/database"
+	"go.uber.org/zap"
 )
 
 // TODO: test reorgs
 // TODO: test pending transactions
 
-type Storage interface {
-	command.Storage
-	peer.Storage
+type Storage struct {
+	db     database.Db
+	logger *zap.Logger
 }
 
-type storage struct {
-	params *chaincfg.Params
-	db     *gorm.DB
-}
-
-func NewStorage(params *chaincfg.Params, db *gorm.DB) Storage {
-	return &storage{
-		params: params,
+func NewStorage(db database.Db) *Storage {
+	logger := zap.NewNop()
+	return &Storage{
 		db:     db,
+		logger: logger,
 	}
+}
+
+func (s *Storage) SetLogger(logger *zap.Logger) *Storage {
+	s.logger = logger
+	return s
 }
