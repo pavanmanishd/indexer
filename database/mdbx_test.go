@@ -13,7 +13,7 @@ func TestMDBX(t *testing.T) {
 
 	db, err := database.NewMDBX(path, dbName)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to initialize MDBX database: %v", err)
 	}
 	defer db.Close()
 
