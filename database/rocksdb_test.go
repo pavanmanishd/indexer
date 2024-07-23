@@ -13,7 +13,7 @@ func TestRocksDB(t *testing.T) {
 	path := t.TempDir()
 	db, err := database.NewRocksDB(path, zap.NewNop())
 	if err != nil {
-		t.Fatal("expected database error to be nil")
+		t.Fatalf("failed to initialize RocksDB database: %v", err)
 	}
 	if db == nil {
 		t.Fatal("db is nil")
