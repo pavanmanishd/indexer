@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	oprphanKey = "orphan"
+		orphanKey = "orphan"
 )
 
 func (s *Storage) PutOrphanTx(tx *model.Transaction) error {
